@@ -1,14 +1,15 @@
 const STACK_SETS: usize = 4;
 const SET_SIZE: usize = usize::BITS as usize;
 
-struct BitSet {
+pub struct BitSet {
     sets: [WordBitSet; STACK_SETS],
     #[cfg(feature = "incomplete_set")]
     fallback_cluster: WordBitSet,
     fallback: Vec<WordBitSet>,
 }
 impl BitSet {
-    const fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         #[cfg(feature = "incomplete_set")]
         let fallback_cluster = WordBitSet::new();
         Self {
@@ -24,7 +25,7 @@ impl BitSet {
         }
     }
     #[cfg(feature = "incomplete_set")]
-    fn insert(&mut self, item: usize) {
+    pub fn insert(&mut self, item: usize) {
         let cluster = item / SET_SIZE;
         if cluster >= STACK_SETS {
             if let Some(index) = self.fallback_cluster.index(cluster - STACK_SETS) {
@@ -41,7 +42,7 @@ impl BitSet {
         }
     }
     #[cfg(not(feature = "incomplete_set"))]
-    fn insert(&mut self, item: usize) {
+    pub fn insert(&mut self, item: usize) {
         let cluster = item / SET_SIZE;
         if cluster >= STACK_SETS {
             let cluster = cluster - STACK_SETS;
@@ -54,7 +55,7 @@ impl BitSet {
         }
     }
     #[cfg(feature = "incomplete_set")]
-    fn exists(&self, item: usize) -> bool {
+    pub fn exists(&self, item: usize) -> bool {
         let cluster = item / SET_SIZE;
         if cluster >= STACK_SETS {
             if let Some(index) = self.fallback_cluster.index(cluster - STACK_SETS) {
@@ -67,7 +68,7 @@ impl BitSet {
         }
     }
     #[cfg(not(feature = "incomplete_set"))]
-    fn exists(&mut self, item: usize) -> bool {
+    pub fn exists(&mut self, item: usize) -> bool {
         let cluster = item / SET_SIZE;
         if cluster >= STACK_SETS {
             let cluster = cluster - STACK_SETS;
@@ -81,7 +82,7 @@ impl BitSet {
         }
     }
     #[cfg(feature = "incomplete_set")]
-    fn remove(&mut self, item: usize) {
+    pub fn remove(&mut self, item: usize) {
         let cluster = item / SET_SIZE;
         if cluster >= STACK_SETS {
             if let Some(index) = self.fallback_cluster.index(cluster - STACK_SETS) {
@@ -92,7 +93,7 @@ impl BitSet {
         }
     }
     #[cfg(not(feature = "incomplete_set"))]
-    fn remove(&mut self, item: usize) {
+    pub fn remove(&mut self, item: usize) {
         let cluster = item / SET_SIZE;
         if cluster >= STACK_SETS {
             let cluster = cluster - STACK_SETS;
@@ -105,7 +106,7 @@ impl BitSet {
         }
     }
 }
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct WordBitSet {
     set: usize,
 }
@@ -159,7 +160,7 @@ impl WordBitSet {
 }
 
 impl Iterator for Biterator {
-    type Item = usize;
+    type Item = u32;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.sets & 1 == 1 {
@@ -170,11 +171,10 @@ impl Iterator for Biterator {
         } else {
             let x = self.sets.trailing_zeros();
             self.sets -= 1 << x as usize;
-            Some(TryInto::<usize>::try_into(x).unwrap())
+            Some(x)
         }
     }
 }
-fn main() {}
 #[cfg(feature = "incomplete_set")]
 #[test]
 fn test_index() {
@@ -213,9 +213,9 @@ fn test_remove() {
         assert!(!set.exists(i));
     }
 }
-// maximum capacity
+// max Capacity
 #[test]
-fn stress_test() {
+pub fn bitset_stress_test() {
     let mut set = BitSet::new();
     for i in 0..43 * 100 {
         set.insert(i);
@@ -228,5 +228,22 @@ fn stress_test() {
     }
     for i in 0..43 * 100 {
         assert!(!set.exists(i));
+    }
+}
+#[test]
+pub fn hashmap_stress_test() {
+    let mut set = std::collections::HashSet::<u32>::new();
+    let r = 0..43 * 100;
+    for i in r.clone() {
+        assert!(set.insert(i));
+    }
+    for i in r.clone() {
+        assert!(set.contains(&i));
+    }
+    for i in r.clone() {
+        assert!(set.remove(&i));
+    }
+    for i in r {
+        assert!(!set.contains(&i));
     }
 }
