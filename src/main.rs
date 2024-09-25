@@ -1,3 +1,4 @@
+
 const STACK_SETS: usize = 4;
 const SET_SIZE: usize = usize::BITS as usize;
 
@@ -38,7 +39,7 @@ impl BitSet {
                 self.fallback[index - 1].insert(item % SET_SIZE);
             }
         } else {
-            self.sets[cluster].insert(item - cluster * SET_SIZE);
+            self.sets[cluster].insert(item % SET_SIZE);
         }
     }
     #[cfg(not(feature = "incomplete_set"))]
@@ -51,7 +52,7 @@ impl BitSet {
             }
             self.fallback[cluster].insert(item % SET_SIZE);
         } else {
-            self.sets[cluster].insert(item - cluster * SET_SIZE);
+            self.sets[cluster].insert(item % SET_SIZE);
         }
     }
     #[cfg(feature = "incomplete_set")]
@@ -59,17 +60,17 @@ impl BitSet {
         let cluster = item / SET_SIZE;
         if cluster >= STACK_SETS {
             let cluster = cluster - STACK_SETS;
+            println!("item: {item}, cluster: {cluster}");
             if let Some(index) = self.fallback_cluster.index(cluster) {
-                for i in self.fallback[index - 1].clone().iter() {
-                    println!("{i}");
-                    panic!()
+                for i in self.fallback[index -1 ].iter() {
+                    println!("i {:b} == {:b}", i , item%SET_SIZE);
                 }
                 return self.fallback[index - 1].exists(item % SET_SIZE);
             } else {
                 false
             }
         } else {
-            self.sets[cluster].exists(item - cluster * SET_SIZE)
+            self.sets[cluster].exists(item % SET_SIZE)
         }
     }
     #[cfg(not(feature = "incomplete_set"))]
@@ -161,7 +162,7 @@ impl WordBitSet {
         let mask = 1 << item;
         self.set &= !mask;
     }
-    fn iter(self) -> Biterator {
+    fn iter(&self) -> Biterator {
         Biterator { sets: self.set }
     }
 }
@@ -170,36 +171,46 @@ impl Iterator for Biterator {
     type Item = usize;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.sets == 0 {
+        if self.sets & 1 ==1 {
+            self.sets -= 1;
+            Some(0)
+        } else if self.sets == 0 {
             None
         } else {
             let x = self.sets.trailing_zeros();
-            self.sets -= x as usize;
-            Some(x.try_into().unwrap())
+            self.sets -=1<< x as usize;
+            Some(TryInto::<usize>::try_into(x).unwrap())
         }
     }
 }
 fn main() {
     let mut set = BitSet::new();
-    set.insert(5);
-    set.remove(5);
-    set.insert(3);
-    set.insert(0);
-    set.insert(1);
+    for i in 0..50 {
+        set.insert(i);
+    }
+    for i in 0..50 {
+        assert!(set.exists(i))
+    }
     set.insert(230);
-    set.insert(256);
+    set.insert(310);
     set.insert(300);
+    set.insert(290);
     set.insert(400);
-    set.insert(500);
-    set.remove(500);
-    set.insert(600);
-    set.remove(600);
+    #[cfg(feature = "incomplete_set")]
+    for i in set.fallback_cluster.iter() {
+       println!("{:?}", i );
+    }
+    set.remove(5);
     assert!(set.exists(3));
+    assert!(set.exists(2));
     assert!(set.exists(1));
     assert!(set.exists(0));
+    assert!(set.exists(34));
     assert!(!set.exists(5));
     assert!(set.exists(230));
     assert!(set.exists(300));
+    assert!(set.exists(290));
+    assert!(set.exists(310));
     assert!(set.exists(400));
     assert!(!set.exists(9998));
 }
