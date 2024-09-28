@@ -31,6 +31,11 @@ impl BitSet {
             if let Some(index) = self.fallback_cluster.index(cluster - STACK_SETS) {
                 self.fallback[index].insert(item % SET_SIZE);
             } else {
+                assert!(
+                    cluster - STACK_SETS < SET_SIZE,
+                    "Reached maximum set capacity {}, {item} too big",
+                    SET_SIZE * (SET_SIZE + 4) - 1
+                );
                 self.fallback_cluster.insert(cluster - STACK_SETS);
                 // SAFETY: We unwrap because we inserted the element in the line before
                 let index = self.fallback_cluster.index(cluster - STACK_SETS).unwrap();
@@ -106,20 +111,21 @@ impl BitSet {
         }
     }
 }
+
 #[derive(Debug)]
-struct WordBitSet {
+pub struct WordBitSet {
     set: usize,
-}
-struct Biterator {
-    sets: usize,
 }
 impl WordBitSet {
     const fn new() -> Self {
         Self { set: 0 }
     }
 
+    #[must_use]
+    pub const fn as_raw(&self) -> &usize {
+        &self.set
+    }
     fn insert(&mut self, item: usize) {
-        debug_assert!(item < SET_SIZE);
         let mask = 1 << item;
         self.set |= mask;
     }
@@ -130,7 +136,7 @@ impl WordBitSet {
     }
     /// Panics if item is bigger than `USIZE_SIZE`
     const fn exists(&self, item: usize) -> bool {
-        if item > SET_SIZE {
+        if item >= SET_SIZE {
             return false;
         }
         let mask = 1 << item;
@@ -150,31 +156,33 @@ impl WordBitSet {
         }
     }
     fn remove(&mut self, item: usize) {
-        debug_assert!(item < SET_SIZE);
         let mask = 1 << item;
         self.set &= !mask;
     }
-    fn iter(&self) -> Biterator {
-        Biterator { sets: self.set }
-    }
 }
+impl IntoIterator for BitSet {
+    type Item = WordBitSet;
 
-impl Iterator for Biterator {
-    type Item = u32;
+    type IntoIter = std::vec::IntoIter<WordBitSet>;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.sets & 1 == 1 {
-            self.sets -= 1;
-            Some(0)
-        } else if self.sets == 0 {
-            None
-        } else {
-            let x = self.sets.trailing_zeros();
-            self.sets -= 1 << x as usize;
-            Some(x)
+    #[must_use]
+    fn into_iter(self) -> std::vec::IntoIter<WordBitSet> {
+        let mut cluster = self.fallback;
+        cluster.reserve(STACK_SETS);
+        // SAFETY: At this point, `vec` has sufficient capacity.
+        // Since we abstract over usize we don't care about drop safety or overlapping copies.
+        unsafe {
+            let ptr = cluster.as_mut_ptr();
+            // Shift existing elements in `vec` to the right by `STACK_SETS` positions
+            std::ptr::copy(ptr, ptr.add(STACK_SETS), cluster.len());
+            std::ptr::copy_nonoverlapping(self.sets.as_ptr(), ptr, STACK_SETS);
+            // Update the length of the vector to reflect the new total length
+            cluster.set_len(cluster.len() + STACK_SETS);
         }
+        cluster.into_iter()
     }
 }
+
 #[cfg(feature = "incomplete_set")]
 #[test]
 fn test_index() {
