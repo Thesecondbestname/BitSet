@@ -13,7 +13,7 @@ pub fn hashmap_benchmark(c: &mut Criterion) {
 }
 #[inline]
 pub fn bitset_stress_test() {
-    let mut set = bitset::BitSet::new();
+    let mut set = bitset::BitSet::default();
     let r = 0..1_000_000;
     for i in r.clone() {
         set.insert(i);
