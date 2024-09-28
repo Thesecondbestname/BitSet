@@ -119,6 +119,11 @@ impl<T: SetElem> BitSet<T> {
             self.sets[cluster].remove(item - cluster * SET_SIZE);
         }
     }
+    fn iter(
+        &self,
+    ) -> std::iter::Chain<std::slice::Iter<'_, WordBitSet>, std::slice::Iter<'_, WordBitSet>> {
+        self.sets.iter().chain(self.fallback.iter())
+    }
 }
 
 impl<U> Default for BitSet<U> {
@@ -213,7 +218,7 @@ impl<T> IntoIterator for BitSet<T> {
 pub trait SetElem: FitsIntoSet {
     fn index(self) -> usize;
 }
-trait FitsIntoSet: Sized {}
+pub trait FitsIntoSet: Sized {}
 
 #[macro_export]
 macro_rules! impl_small_type {
