@@ -1,15 +1,12 @@
-use std::{
-    collections::{HashMap, HashSet},
-    hash::Hash,
-};
+use std::collections::HashSet;
 
 use criterion::{criterion_group, criterion_main, Criterion};
 
 pub fn bitset_benchmark(c: &mut Criterion) {
-    c.bench_function("BitSet stress test", |b| b.iter(|| bitset_stress_test()));
+    c.bench_function("BitSet stress test", |b| b.iter(bitset_stress_test));
 }
 pub fn hashmap_benchmark(c: &mut Criterion) {
-    c.bench_function("HashMap stress test", |b| b.iter(|| stress_test_hash_map()));
+    c.bench_function("HashMap stress test", |b| b.iter(stress_test_hash_map));
 }
 #[inline]
 pub fn bitset_stress_test() {
@@ -24,7 +21,7 @@ pub fn bitset_stress_test() {
     for i in r.clone() {
         set.remove(i);
     }
-    for i in r.clone() {
+    for i in r {
         assert!(!set.exists(i));
     }
 }

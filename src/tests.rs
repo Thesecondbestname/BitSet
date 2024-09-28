@@ -1,9 +1,9 @@
-use crate::{new_bit_set, SetElem};
+use crate::new_bit_set;
 
 #[cfg(feature = "incomplete_set")]
 #[test]
 fn test_index() {
-    let mut set = BitSet::new();
+    let mut set = new_bit_set();
     set.insert(4);
     set.insert(23);
     set.insert(55);

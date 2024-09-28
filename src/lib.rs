@@ -28,7 +28,8 @@ const fn new_bit_set<T: SetElem>() -> BitSet<T> {
 }
 impl<T: SetElem> BitSet<T> {
     #[cfg(feature = "incomplete_set")]
-    pub fn insert(&mut self, item: T) {
+    pub fn insert(&mut self, i: T) {
+        let item = i.index();
         let cluster = item / SET_SIZE;
         if cluster >= STACK_SETS {
             if let Some(index) = self.fallback_cluster.index(cluster - STACK_SETS) {
@@ -223,14 +224,22 @@ macro_rules! impl_small_type {
         )*
     };
 }
-// const fn fits<T: SetElem>(_: &T) {
-//     let s = mem::size_of::<T>();
-//     assert!(s * 8 <= SET_SIZE);
-// }
 impl_small_type!(usize);
 impl SetElem for usize {
     fn index(self) -> usize {
         self
+    }
+}
+impl_small_type!(u32);
+impl SetElem for u32 {
+    fn index(self) -> usize {
+        self as usize
+    }
+}
+impl_small_type!(i32);
+impl SetElem for i32 {
+    fn index(self) -> usize {
+        self as usize
     }
 }
 #[cfg(test)]
